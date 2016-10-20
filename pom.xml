@@ -32,6 +32,11 @@
         <version>21</version>
     </parent>
 
+    <properties>
+        <maven.compiler.source>9</maven.compiler.source>
+        <maven.compiler.target>9</maven.compiler.target>
+    </properties>
+
     <build>
     </build>
 
