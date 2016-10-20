@@ -24,7 +24,7 @@
 
     <groupId>org.jboss.modules</groupId>
     <artifactId>jboss-modules-jdk9-supplement</artifactId>
-    <version>1.6.0.Beta4-SNAPSHOT</version>
+    <version>1.0.Final-SNAPSHOT</version>
 
     <parent>
         <groupId>org.jboss</groupId>
@@ -44,7 +44,7 @@
         <dependency>
             <groupId>org.jboss.modules</groupId>
             <artifactId>jboss-modules</artifactId>
-            <version>${project.version}</version>
+            <version>1.6.0.Beta4-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
 
