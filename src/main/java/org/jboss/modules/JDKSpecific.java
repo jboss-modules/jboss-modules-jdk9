@@ -41,8 +41,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.stream.Stream;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
 
 /**
  * JDK-specific classes which are replaced for different JDK major versions.  This one is for Java 9 only.
@@ -97,7 +95,7 @@ final class JDKSpecific {
         processRuntimeImages(pathSet);
         // TODO: Remove this stuff once jboss-modules is itself a module
         final String javaClassPath = AccessController.doPrivileged(new PropertyReadAction("java.class.path"));
-        processClassPathItem(javaClassPath, new FastCopyHashSet<>(1024), pathSet);
+        JDKPaths.processClassPathItem(javaClassPath, new FastCopyHashSet<>(1024), pathSet);
         pathSet.addAll(MODULES_PACKAGES);
         return pathSet;
     }
@@ -162,74 +160,6 @@ final class JDKSpecific {
         @Override
         public FileVisitResult postVisitDirectory(final Path dir, final IOException exc) throws IOException {
             return CONTINUE;
-        }
-    }
-
-    private static void processClassPathItem(final String classPath, final Set<String> jarSet, final Set<String> pathSet) {
-        if (classPath == null) return;
-        int s = 0, e;
-        do {
-            e = classPath.indexOf(File.pathSeparatorChar, s);
-            String item = e == -1 ? classPath.substring(s) : classPath.substring(s, e);
-            if (! jarSet.contains(item)) {
-                final File file = new File(item);
-                if (file.isDirectory()) {
-                    processDirectory0(pathSet, file);
-                } else {
-                    try {
-                        processJar(pathSet, file);
-                    } catch (IOException ex) {
-                        // ignore
-                    }
-                }
-            }
-            s = e + 1;
-        } while (e != -1);
-    }
-
-    private static void processJar(final Set<String> pathSet, final File file) throws IOException {
-        final ZipFile zipFile = new ZipFile(file);
-        try {
-            final Enumeration<? extends ZipEntry> entries = zipFile.entries();
-            while (entries.hasMoreElements()) {
-                final ZipEntry entry = entries.nextElement();
-                final String name = entry.getName();
-                final int lastSlash = name.lastIndexOf('/');
-                if (lastSlash != -1) {
-                    pathSet.add(name.substring(0, lastSlash));
-                }
-            }
-            zipFile.close();
-        } finally {
-            StreamUtil.safeClose(zipFile);
-        }
-    }
-
-    private static void processDirectory0(final Set<String> pathSet, final File file) {
-        for (File entry : file.listFiles()) {
-            if (entry.isDirectory()) {
-                processDirectory1(pathSet, entry, file.getPath());
-            } else {
-                final String parent = entry.getParent();
-                if (parent != null) pathSet.add(parent);
-            }
-        }
-    }
-
-    private static void processDirectory1(final Set<String> pathSet, final File file, final String pathBase) {
-        for (File entry : file.listFiles()) {
-            if (entry.isDirectory()) {
-                processDirectory1(pathSet, entry, pathBase);
-            } else {
-                String packagePath = entry.getParent();
-                if (packagePath != null) {
-                    packagePath = packagePath.substring(pathBase.length()).replace('\\', '/');
-                    if(packagePath.startsWith("/")) {
-                        packagePath = packagePath.substring(1);
-                    }
-                    pathSet.add(packagePath);
-                }
-            }
         }
     }
 }
