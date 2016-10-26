@@ -22,7 +22,6 @@ import static java.nio.file.FileVisitResult.CONTINUE;
 import static java.nio.file.FileVisitResult.SKIP_SUBTREE;
 import static java.security.AccessController.doPrivileged;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -64,7 +63,9 @@ final class JDKSpecific {
     // === the actual JDK-specific API ===
 
     static Class<?> getCallingUserClass() {
-        return STACK_WALKER.walk(stream -> stream.skip(1).findFirst().get().getDeclaringClass());
+        return STACK_WALKER.walk(stream -> stream.skip(1)
+                .filter(s -> !s.getDeclaringClass().equals(org.jboss.modules.Module.class))
+                .findFirst().get().getDeclaringClass());
     }
 
     static Class<?> getCallingClass() {
@@ -104,8 +105,6 @@ final class JDKSpecific {
 
     private static Class<?> processFrame(Stream<StackWalker.StackFrame> stream) {
         final Iterator<StackWalker.StackFrame> iterator = stream.iterator();
-        if (! iterator.hasNext()) return null;
-        iterator.next();
         if (! iterator.hasNext()) return null;
         iterator.next();
         if (! iterator.hasNext()) return null;
