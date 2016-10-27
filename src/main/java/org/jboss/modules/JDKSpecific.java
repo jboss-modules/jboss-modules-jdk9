@@ -22,8 +22,8 @@ import static java.nio.file.FileVisitResult.CONTINUE;
 import static java.nio.file.FileVisitResult.SKIP_SUBTREE;
 import static java.security.AccessController.doPrivileged;
 
-import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -35,10 +35,13 @@ import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -61,6 +64,9 @@ final class JDKSpecific {
 
     static final StackWalker STACK_WALKER = doPrivileged((PrivilegedAction<StackWalker>) () -> StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE));
 
+    static final ClassLoader PLATFORM_CLASS_LOADER = doPrivileged((PrivilegedAction<ClassLoader>) ClassLoader::getPlatformClassLoader);
+    static final ClassLoader OUR_CLASS_LOADER = JDKSpecific.class.getClassLoader();
+
     // === the actual JDK-specific API ===
 
     static Class<?> getCallingUserClass() {
@@ -81,15 +87,6 @@ final class JDKSpecific {
         return cl.getDefinedPackage(packageName);
     }
 
-    static Enumeration<URL> getPlatformResources(String name) throws IOException {
-        final int index = name.lastIndexOf('/');
-        if (index > 0 && MODULES_PACKAGES.contains(name.substring(0, index))) {
-            return JDKSpecific.class.getClassLoader().getResources(name);
-        } else {
-            return ClassLoader.getPlatformClassLoader().getResources(name);
-        }
-    }
-
     static Set<String> getJDKPaths() {
         Set<String> pathSet = new FastCopyHashSet<>(1024);
         processRuntimeImages(pathSet);
@@ -100,12 +97,72 @@ final class JDKSpecific {
         return pathSet;
     }
 
+    static LocalLoader getSystemLocalLoader() {
+        return new LocalLoader() {
+            public Class<?> loadClassLocal(final String name, final boolean resolve) {
+                try {
+                    return Class.forName(name, resolve, getPlatformClassLoader());
+                } catch (ClassNotFoundException ignored) {
+                    try {
+                        return Class.forName(name, resolve, OUR_CLASS_LOADER);
+                    } catch (ClassNotFoundException e) {
+                        return null;
+                    }
+                }
+            }
+
+            public Package loadPackageLocal(final String name) {
+                final Package pkg = getPackage(getPlatformClassLoader(), name);
+                return pkg != null ? pkg : getPackage(OUR_CLASS_LOADER, name);
+            }
+
+            public List<Resource> loadResourceLocal(final String name) {
+                final Enumeration<URL> urls;
+                try {
+                    urls = getSystemResources(name);
+                } catch (IOException e) {
+                    return Collections.emptyList();
+                }
+                final List<Resource> list = new ArrayList<Resource>();
+                while (urls.hasMoreElements()) {
+                    list.add(new URLResource(urls.nextElement()));
+                }
+                return list;
+            }
+        };
+    }
+
+    static ClassLoader getPlatformClassLoader() {
+        return PLATFORM_CLASS_LOADER;
+    }
+
+    static URL getSystemResource(final String name) {
+        final URL resource = getPlatformClassLoader().getResource(name);
+        return resource != null ? resource : OUR_CLASS_LOADER.getResource(name);
+    }
+
+    static Enumeration<URL> getSystemResources(final String name) throws IOException {
+        final Enumeration<URL> resources = getPlatformClassLoader().getResources(name);
+        return resources != null && resources.hasMoreElements() ? resources : OUR_CLASS_LOADER.getResources(name);
+    }
+
+    static InputStream getSystemResourceAsStream(final String name) {
+        final InputStream stream = getPlatformClassLoader().getResourceAsStream(name);
+        return stream != null ? stream : OUR_CLASS_LOADER.getSystemResourceAsStream(name);
+    }
+
+    static Class<?> getSystemClass(@SuppressWarnings("unused") final ConcurrentClassLoader caller, final String className) throws ClassNotFoundException {
+        try {
+            return getPlatformClassLoader().loadClass(className);
+        } catch (ClassNotFoundException ignored) {
+            return OUR_CLASS_LOADER.loadClass(className);
+        }
+    }
+
     // === nested util stuff, non-API ===
 
     private static Class<?> processFrame(Stream<StackWalker.StackFrame> stream) {
         final Iterator<StackWalker.StackFrame> iterator = stream.iterator();
-        if (! iterator.hasNext()) return null;
-        iterator.next();
         if (! iterator.hasNext()) return null;
         iterator.next();
         if (! iterator.hasNext()) return null;
