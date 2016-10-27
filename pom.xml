@@ -38,6 +38,23 @@
     </properties>
 
     <build>
+        <plugins>
+            <!-- Surefire -->
+            <plugin>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <redirectTestOutputToFile>true</redirectTestOutputToFile>
+                    <trimStackTrace>false</trimStackTrace>
+                     <!-- Modules ignores Class-Path -->
+                    <useManifestOnlyJar>false</useManifestOnlyJar>
+                    <printSummary>true</printSummary>
+                    <includes>
+                        <include>**/*Test.java</include>
+                    </includes>
+                    <forkMode>always</forkMode>
+                </configuration>
+            </plugin>
+        </plugins>
     </build>
 
     <dependencies>
@@ -47,7 +64,17 @@
             <version>1.6.0.Beta4-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
-
-
+        <dependency>
+            <groupId>org.jboss.shrinkwrap</groupId>
+            <artifactId>shrinkwrap-impl-base</artifactId>
+            <version>1.2.2</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.11</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 </project>
