@@ -70,7 +70,9 @@ final class JDKSpecific {
     // === the actual JDK-specific API ===
 
     static Class<?> getCallingUserClass() {
-        return STACK_WALKER.walk(stream -> stream.skip(1).findFirst().get().getDeclaringClass());
+        return STACK_WALKER.walk(stream -> stream.skip(1)
+                .filter(s -> !s.getDeclaringClass().equals(org.jboss.modules.Module.class))
+                .findFirst().get().getDeclaringClass());
     }
 
     static Class<?> getCallingClass() {
