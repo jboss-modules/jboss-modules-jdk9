@@ -22,6 +22,7 @@ import static java.nio.file.FileVisitResult.CONTINUE;
 import static java.nio.file.FileVisitResult.SKIP_SUBTREE;
 import static java.security.AccessController.doPrivileged;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -44,11 +45,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
+import java.util.jar.JarFile;
 
 /**
  * JDK-specific classes which are replaced for different JDK major versions.  This one is for Java 9 only.
  *
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
+ * @author <a href="mailto:ropalka@redhat.com">Richard Opalka</a>
  */
 final class JDKSpecific {
 
@@ -68,6 +71,14 @@ final class JDKSpecific {
     static final ClassLoader OUR_CLASS_LOADER = JDKSpecific.class.getClassLoader();
 
     // === the actual JDK-specific API ===
+
+    static JarFile getJarFile(final String name, final boolean verify) throws IOException {
+        return new JarFile(new File(name), verify, JarFile.OPEN_READ, JarFile.runtimeVersion());
+    }
+
+    static JarFile getJarFile(final File name, final boolean verify) throws IOException {
+        return new JarFile(name, verify, JarFile.OPEN_READ, JarFile.runtimeVersion());
+    }
 
     static Class<?> getCallingUserClass() {
         return STACK_WALKER.walk(stream -> stream.skip(1)
