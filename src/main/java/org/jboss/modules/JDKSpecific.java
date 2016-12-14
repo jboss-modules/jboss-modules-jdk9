@@ -57,7 +57,10 @@ final class JDKSpecific {
 
     // === private fields and data ===
 
-    static final Set<String> MODULES_PACKAGES = new HashSet<>(Arrays.asList(
+    private static final StackWalker STACK_WALKER = doPrivileged((PrivilegedAction<StackWalker>) () -> StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE));
+    private static final ClassLoader PLATFORM_CLASS_LOADER = doPrivileged((PrivilegedAction<ClassLoader>) ClassLoader::getPlatformClassLoader);
+    private static final ClassLoader OUR_CLASS_LOADER = JDKSpecific.class.getClassLoader();
+    private static final Set<String> MODULES_PACKAGES = new HashSet<>(Arrays.asList(
         "org/jboss/modules",
         "org/jboss/modules/filter",
         "org/jboss/modules/log",
@@ -65,10 +68,6 @@ final class JDKSpecific {
         "org/jboss/modules/ref"
     ));
 
-    static final StackWalker STACK_WALKER = doPrivileged((PrivilegedAction<StackWalker>) () -> StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE));
-
-    static final ClassLoader PLATFORM_CLASS_LOADER = doPrivileged((PrivilegedAction<ClassLoader>) ClassLoader::getPlatformClassLoader);
-    static final ClassLoader OUR_CLASS_LOADER = JDKSpecific.class.getClassLoader();
 
     // === the actual JDK-specific API ===
 
