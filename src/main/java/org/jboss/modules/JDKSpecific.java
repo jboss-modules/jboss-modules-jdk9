@@ -91,9 +91,7 @@ final class JDKSpecific {
     }
 
     static boolean isParallelCapable(ConcurrentClassLoader cl) {
-        // TODO this API isn't merged yet
-        // return cl.isParallelCapable();
-        return ConcurrentClassLoader.getLockForClass(cl, "$TEST$") != cl;
+        return cl.isRegisteredAsParallelCapable();
     }
 
     static Package getPackage(ClassLoader cl, String packageName) {
