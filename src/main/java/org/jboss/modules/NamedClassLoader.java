@@ -18,10 +18,13 @@
 
 package org.jboss.modules;
 
+import java.net.URL;
+
 /**
  * A class loader that may be named.  On Java 9 and later, the name will be propagated up to the JVM.
  *
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
+ * @author <a href="mailto:ropalka@redhat.com">Richard Opalka</a>
  */
 public abstract class NamedClassLoader extends ClassLoader {
     static {
@@ -56,5 +59,20 @@ public abstract class NamedClassLoader extends ClassLoader {
      */
     public String getName() {
         return super.getName();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    protected Package definePackage(final String name, final String specTitle, final String specVersion,
+                                    final String specVendor, final String implTitle, final String implVersion,
+                                    final String implVendor, final URL sealBase) {
+        Package pkg;
+        try {
+            pkg = super.definePackage(name, specTitle, specVersion, specVendor, implTitle, implVersion, implVendor, sealBase);
+        } catch (final IllegalArgumentException iae) {
+            pkg = super.getDefinedPackage(name);
+            if (pkg == null) throw iae;
+        }
+        return pkg;
     }
 }

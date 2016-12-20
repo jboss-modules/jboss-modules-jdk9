@@ -57,7 +57,10 @@ final class JDKSpecific {
 
     // === private fields and data ===
 
-    static final Set<String> MODULES_PACKAGES = new HashSet<>(Arrays.asList(
+    private static final StackWalker STACK_WALKER = doPrivileged((PrivilegedAction<StackWalker>) () -> StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE));
+    private static final ClassLoader PLATFORM_CLASS_LOADER = doPrivileged((PrivilegedAction<ClassLoader>) ClassLoader::getPlatformClassLoader);
+    private static final ClassLoader OUR_CLASS_LOADER = JDKSpecific.class.getClassLoader();
+    private static final Set<String> MODULES_PACKAGES = new HashSet<>(Arrays.asList(
         "org/jboss/modules",
         "org/jboss/modules/filter",
         "org/jboss/modules/log",
@@ -65,10 +68,6 @@ final class JDKSpecific {
         "org/jboss/modules/ref"
     ));
 
-    static final StackWalker STACK_WALKER = doPrivileged((PrivilegedAction<StackWalker>) () -> StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE));
-
-    static final ClassLoader PLATFORM_CLASS_LOADER = doPrivileged((PrivilegedAction<ClassLoader>) ClassLoader::getPlatformClassLoader);
-    static final ClassLoader OUR_CLASS_LOADER = JDKSpecific.class.getClassLoader();
 
     // === the actual JDK-specific API ===
 
@@ -91,9 +90,7 @@ final class JDKSpecific {
     }
 
     static boolean isParallelCapable(ConcurrentClassLoader cl) {
-        // TODO this API isn't merged yet
-        // return cl.isParallelCapable();
-        return ConcurrentClassLoader.getLockForClass(cl, "$TEST$") != cl;
+        return cl.isRegisteredAsParallelCapable();
     }
 
     static Package getPackage(ClassLoader cl, String packageName) {
@@ -114,7 +111,7 @@ final class JDKSpecific {
         return new LocalLoader() {
             public Class<?> loadClassLocal(final String name, final boolean resolve) {
                 try {
-                    return Class.forName(name, resolve, getPlatformClassLoader());
+                    return Class.forName(name, resolve, PLATFORM_CLASS_LOADER);
                 } catch (ClassNotFoundException ignored) {
                     try {
                         return Class.forName(name, resolve, OUR_CLASS_LOADER);
@@ -125,7 +122,7 @@ final class JDKSpecific {
             }
 
             public Package loadPackageLocal(final String name) {
-                final Package pkg = getPackage(getPlatformClassLoader(), name);
+                final Package pkg = getPackage(PLATFORM_CLASS_LOADER, name);
                 return pkg != null ? pkg : getPackage(OUR_CLASS_LOADER, name);
             }
 
@@ -150,23 +147,23 @@ final class JDKSpecific {
     }
 
     static URL getSystemResource(final String name) {
-        final URL resource = getPlatformClassLoader().getResource(name);
+        final URL resource = PLATFORM_CLASS_LOADER.getResource(name);
         return resource != null ? resource : OUR_CLASS_LOADER.getResource(name);
     }
 
     static Enumeration<URL> getSystemResources(final String name) throws IOException {
-        final Enumeration<URL> resources = getPlatformClassLoader().getResources(name);
+        final Enumeration<URL> resources = PLATFORM_CLASS_LOADER.getResources(name);
         return resources != null && resources.hasMoreElements() ? resources : OUR_CLASS_LOADER.getResources(name);
     }
 
     static InputStream getSystemResourceAsStream(final String name) {
-        final InputStream stream = getPlatformClassLoader().getResourceAsStream(name);
+        final InputStream stream = PLATFORM_CLASS_LOADER.getResourceAsStream(name);
         return stream != null ? stream : OUR_CLASS_LOADER.getSystemResourceAsStream(name);
     }
 
     static Class<?> getSystemClass(@SuppressWarnings("unused") final ConcurrentClassLoader caller, final String className) throws ClassNotFoundException {
         try {
-            return getPlatformClassLoader().loadClass(className);
+            return PLATFORM_CLASS_LOADER.loadClass(className);
         } catch (ClassNotFoundException ignored) {
             return OUR_CLASS_LOADER.loadClass(className);
         }
